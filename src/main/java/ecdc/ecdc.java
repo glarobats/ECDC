@@ -1,10 +1,7 @@
 package ecdc;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.StringTokenizer;
-import java.util.ArrayList;
+import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -44,39 +41,27 @@ public class ecdc {
 
         // Αναλύει το κείμενο και δημιουργεί νέο πίνακα
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            // Split the CSV line by comma
+            String[] line = value.toString().split(",");
 
-            List <String> line = new ArrayList<String>();
+            if (line.length > 0) {
+                List<String> dataList = new ArrayList<>();
 
-            // Χωρίζει το κείμενο σε γραμμές
-            StringTokenizer tokenizer = new StringTokenizer(value.toString());
+                // Iterate over the elements of the CSV line
+                for (int i = 0; i < line.length; i++) {
+                    // Skip the first element
+                    if (i == 0) {
+                        continue;
+                    }
+                    dataList.add(line[i].trim()); // Add each element to the dataList
+                }
 
-            // Προσθέτει τις γραμμές στον πίνακα
-
-
-            // Χωρίζει τα δεδομένα σε tokens χρησιμοποιώντας το tab ως διαχωριστικό
-            String[] tokens = value.toString().split("\t");
-
-            // Δημιουργεί ένα HashMap
-            HashMap<String, List<String>> words = new HashMap<>();
-
-            // Πρώτο token ως κλειδί
-            String keyString = tokens[0];
-
-            // Δημιουργεί λίστα με τα υπόλοιπα tokens
-            List<String> dataList = new ArrayList<>();
-            for (int i = 1; i < tokens.length; i++) {
-                dataList.add(tokens[i]);
+                // Print the dataList
+                System.out.println(dataList);
             }
-
-            // Προσθέτει το κλειδί και την τιμή στο HashMap
-            words.put(keyString, dataList);
-
-
-
-            // Εκτύπωση του HashMap
-            System.out.println(words);
         }
     }
+
 
     /*
     public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> {
