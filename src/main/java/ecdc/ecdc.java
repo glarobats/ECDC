@@ -49,6 +49,7 @@ public class ecdc {
             String[] line = value.toString().split(",");
             // Λήψη συγκεκριμένων δεδομένων από τη γραμμή
             String month = line[2];
+            String year = line[3];
             int cases = Integer.parseInt(line[4]);
             String country = line[6];
 
@@ -60,8 +61,10 @@ public class ecdc {
             dataMap.get(country).put(month, new IntWritable(cases));
 
             // Εκπομπή του κλειδιού-τιμής (country, cases)
-            context.write(new Text(country + " " + month), new IntWritable(cases));        }
-    }
+            context.write(new Text(year + "-" + month + "-" + country + ","), new IntWritable(cases));
+        }
+
+}
 
 
 
