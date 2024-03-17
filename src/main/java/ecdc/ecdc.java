@@ -29,6 +29,8 @@ public class ecdc {
         job.setReducerClass(FirstReducer.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
+    //    job.setMapperClass(SecondMapper.class);
+    //    job.setReducerClass(SecondReducer.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         job.waitForCompletion(true);
@@ -69,17 +71,31 @@ public class ecdc {
             int sum = 0;
             int count = 0;
 
-            // Calculate the sum of cases and count the number of months
+            // Υπολογισμός του αθροίσματος και του πλήθους των τιμών
             for (IntWritable value : values) {
                 sum += value.get();
                 count++;
             }
 
-            // Calculate the average
+            // Υπολογισμός του μέσου όρου
             double average = (double) sum / count;
 
-            // Emit the country and its average number of cases per month
+            // Εκπομπή του κλειδιού-τιμής (country, month, average)
             context.write(key, new DoubleWritable(average));
         }
     }
+
+    public class SecondMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+
+        }
+    }
+
+    public class SecondReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+
+        }
+    }
+
+
 }
