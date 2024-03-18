@@ -29,12 +29,29 @@ public class ecdc {
         job.setReducerClass(FirstReducer.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
-    //    job.setMapperClass(SecondMapper.class);
-    //    job.setReducerClass(SecondReducer.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         job.waitForCompletion(true);
+
+
+        // Ρύθμιση για τον δεύτερο κύκλο MapReduce
+        Job secondJob = new Job(conf, "ncdc-second");
+
+        // Χρήση της έξοδου του πρώτου reducer ως είσοδο για τον δεύτερο mapper
+        secondJob.setOutputKeyClass(Text.class);
+        secondJob.setOutputValueClass(IntWritable.class);
+        secondJob.setMapperClass(SecondMapper.class);
+        //secondJob.setReducerClass(SecondReducer.class);
+        secondJob.setInputFormatClass(TextInputFormat.class);
+        secondJob.setOutputFormatClass(TextOutputFormat.class);
+        FileInputFormat.addInputPath(secondJob, new Path(args[1])); // Είσοδος της δεύτερης εργασίας
+        FileOutputFormat.setOutputPath(secondJob, new Path(args[2])); // Έξοδος της δεύτερης εργασίας
+
+        // Αναμονή για την ολοκλήρωση της δεύτερης εργασίας
+        secondJob.waitForCompletion(true);
     }
+
+
 
 
     public static class FirstMap extends Mapper<LongWritable, Text, Text, IntWritable> {
@@ -57,11 +74,11 @@ public class ecdc {
             if (!dataMap.containsKey(country))
                 dataMap.put(country, new HashMap<>());
 
-            // Προσθήκη του αριθμού κρουσμάτων για τον συγκεκριμένο μήνα
+            // Προσθήκη του αριθμού κρουσμάτων για τον συγκεκριμένο μήνα ανάλογα με τη χώρα
             dataMap.get(country).put(month, new IntWritable(cases));
 
             // Εκπομπή του κλειδιού-τιμής (country, cases)
-            context.write(new Text(year + "-" + month + "-" + country + ","), new IntWritable(cases));
+            context.write(new Text(month + " " + year + " " + country + " "), new IntWritable(cases));
         }
 
 }
@@ -88,11 +105,26 @@ public class ecdc {
         }
     }
 
-    public class SecondMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
-        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 
+
+    public static class SecondMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+        public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            // Χωρίζει το κείμενο σε γραμμές
+            String[] line = value.toString().split(" ");
+
+            // Extract the required information
+            String month = line[0];
+            String year = line[1];
+            String country = line[2];
+            double average = Double.parseDouble(line[3]);
+
+            System.out.println("Country: " + country + " Month: " + month + " Year: " + year + " Average: " + average);
+            // Εκπομπή του κλειδιού-τιμής (country, month, year, average)
+           // context.write(new Text(country + " " + month + " " + year + ","), new DoubleWritable(average));
         }
     }
+
+
 
     public class SecondReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
         public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
