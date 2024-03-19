@@ -41,7 +41,7 @@ public class ecdc {
         secondJob.setOutputKeyClass(Text.class);
         secondJob.setOutputValueClass(IntWritable.class);
         secondJob.setMapperClass(SecondMapper.class);
-        //secondJob.setReducerClass(SecondReducer.class);
+        secondJob.setReducerClass(SecondReducer.class);
         secondJob.setInputFormatClass(TextInputFormat.class);
         secondJob.setOutputFormatClass(TextOutputFormat.class);
         FileInputFormat.addInputPath(secondJob, new Path(args[1])); // Είσοδος της δεύτερης εργασίας
@@ -109,18 +109,7 @@ public class ecdc {
 
     public static class SecondMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            // Χωρίζει το κείμενο σε γραμμές
-            String[] line = value.toString().split(" ");
 
-            // Extract the required information
-            String month = line[0];
-            String year = line[1];
-            String country = line[2];
-            double average = Double.parseDouble(line[3]);
-
-            System.out.println("Country: " + country + " Month: " + month + " Year: " + year + " Average: " + average);
-            // Εκπομπή του κλειδιού-τιμής (country, month, year, average)
-           // context.write(new Text(country + " " + month + " " + year + ","), new DoubleWritable(average));
         }
     }
 
