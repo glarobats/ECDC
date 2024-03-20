@@ -139,9 +139,11 @@ public class ecdc {
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            // Εφόσον το αρχείο που είναι στη cache δεν είναι άδειο 
             if (cachedData != null ) {
-                String[] words = value.toString().split(",");
-                for (String word : words) {
+                // Χωρίζει το κείμενο σε λέξεις
+                String[] FirstReducerOutput = value.toString().split(",");
+                for (String word : FirstReducerOutput) {
                     if (cachedData.contains(word)) {
                         outputFromReducer.set(word);
                         System.out.println(outputFromReducer);
