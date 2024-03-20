@@ -1,9 +1,13 @@
 package ecdc;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
+import java.net.URI;
 import java.util.*;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.filecache.DistributedCache;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -33,6 +37,9 @@ public class ecdc {
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         job.waitForCompletion(true);
 
+
+        // Προσθήκη του αρχείου εξόδου του πρώτου reducer στη cache
+        DistributedCache.addCacheFile(new URI("output1/part-r-00000"), conf);
 
         // Ρύθμιση για τον δεύτερο κύκλο MapReduce
         Job secondJob = new Job(conf, "ncdc-second");
@@ -108,7 +115,41 @@ public class ecdc {
 
 
     public static class SecondMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+        private Text outputFromReducer = new Text();
+        private String cachedData;
+        StringBuilder dataBuilder = new StringBuilder();
+        @Override
+        protected void setup(Context context) throws IOException, InterruptedException {
+            // Πρόσβαση στο αρχείο που βρίσκεται στο configuration
+            Configuration conf = context.getConfiguration();
+            // Λήψη του path του αρχείου από το DistributedCache
+            Path[] cacheFiles = DistributedCache.getLocalCacheFiles(conf);
+            if (cacheFiles != null && cacheFiles.length > 0) {
+                // Ανάγνωση του αρχείου και αποθήκευση του περιεχομένου σε ένα StringBuilder
+                try (BufferedReader br = new BufferedReader(new FileReader(cacheFiles[0].toString()))) {
+                    String line;
+                    while ((line = br.readLine()) != null)
+                        // Προσθήκη της γραμμής στο StringBuilder
+                        dataBuilder.append(line).append("\n");
+
+                    // Αποθήκευση του περιεχομένου του αρχείου στη μεταβλητή cachedData
+                    cachedData = dataBuilder.toString();
+                }
+            }
+        }
+
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
+            if (cachedData != null ) {
+                String[] words = value.toString().split(",");
+                for (String word : words) {
+                    if (cachedData.contains(word)) {
+                        outputFromReducer.set(word);
+                        System.out.println(outputFromReducer);
+                        //context.write(outputKey, new DoubleWritable(Double.parseDouble(outputValue.toString())));
+                    }
+                }
+            }
+
 
         }
     }
