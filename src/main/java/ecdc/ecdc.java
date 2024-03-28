@@ -3,6 +3,7 @@ package ecdc;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.util.*;
 
@@ -51,7 +52,7 @@ public class ecdc {
         secondJob.setReducerClass(SecondReducer.class);
         secondJob.setInputFormatClass(TextInputFormat.class);
         secondJob.setOutputFormatClass(TextOutputFormat.class);
-        FileInputFormat.addInputPath(secondJob, new Path(args[1])); // Είσοδος της δεύτερης εργασίας
+        FileInputFormat.addInputPath(secondJob, new Path(args[0])); // Είσοδος της δεύτερης εργασίας
         FileOutputFormat.setOutputPath(secondJob, new Path(args[2])); // Έξοδος της δεύτερης εργασίας
 
         // Αναμονή για την ολοκλήρωση της δεύτερης εργασίας
@@ -114,10 +115,12 @@ public class ecdc {
 
 
 
-    public static class SecondMapper extends Mapper<LongWritable, Text, Text, DoubleWritable> {
+    public static class SecondMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
         private Text outputFromReducer = new Text();
         private String cachedData;
         StringBuilder dataBuilder = new StringBuilder();
+        private HashMap<String, HashMap<String, IntWritable>> secondInputDataMap = new HashMap<>();
+
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
             // Πρόσβαση στο αρχείο που βρίσκεται στο configuration
@@ -139,20 +142,21 @@ public class ecdc {
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-            // Εφόσον το αρχείο που είναι στη cache δεν είναι άδειο 
-            if (cachedData != null ) {
-                // Χωρίζει το κείμενο σε λέξεις
-                String[] FirstReducerOutput = value.toString().split(",");
-                for (String word : FirstReducerOutput) {
-                    if (cachedData.contains(word)) {
-                        outputFromReducer.set(word);
-                        System.out.println(outputFromReducer);
-                        //context.write(outputKey, new DoubleWritable(Double.parseDouble(outputValue.toString())));
-                    }
-                }
-            }
+
+            // Ανάγνωση του περιεχομένου του αρχείου που βρίσκεται στη cache
+            String[] data = new String[0];
+
+            if (key.get() == 0)// Παράβλεψη της πρώτης γραμμής
+                // Χωρίζει το περιεχόμενο της cache σε λέξεις
+                data = cachedData.split("\\s+");
 
 
+            // Χωρίζει το περιεχόμενο του αρχείου εισόδου σε γραμμές
+            String[] line = value.toString().split("/n//s+");
+
+
+            //  Δυστυχώς, δεν κατάφερα να ολοκληρώσω τον δεύτερο mapper και reducer καθώς μου προκύψαν προβλήματα με τον
+            //  χειρισμό του αρχείου που βρίσκεται στη cache.
         }
     }
 
