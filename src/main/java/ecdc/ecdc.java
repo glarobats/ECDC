@@ -73,7 +73,6 @@ public class ecdc {
             // Χωρίζει το κείμενο σε γραμμές
             String[] line = value.toString().split(",");
             // Λήψη συγκεκριμένων δεδομένων από τη γραμμή
-            String month = line[2];
             String year = line[3];
             int cases = Integer.parseInt(line[4]);
             String country = line[6];
@@ -83,10 +82,10 @@ public class ecdc {
                 dataMap.put(country, new HashMap<>());
 
             // Προσθήκη του αριθμού κρουσμάτων για τον συγκεκριμένο μήνα ανάλογα με τη χώρα
-            dataMap.get(country).put(month, new IntWritable(cases));
+            dataMap.get(country).put(country, new IntWritable(cases));
 
             // Εκπομπή του κλειδιού-τιμής (country, cases)
-            context.write(new Text(month + " " + year + " " + country + " "), new IntWritable(cases));
+            context.write(new Text(country + " "), new IntWritable(cases));
         }
 
 }
@@ -108,7 +107,7 @@ public class ecdc {
             // Υπολογισμός του μέσου όρου
             double average = (double) sum / count;
 
-            // Εκπομπή του κλειδιού-τιμής (country, month, average)
+            // Εκπομπή του κλειδιού-τιμής (country, average)
             context.write(key, new DoubleWritable(average));
         }
     }
