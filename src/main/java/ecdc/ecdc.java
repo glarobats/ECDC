@@ -21,6 +21,7 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+import org.hsqldb.Tokenizer;
 
 public class ecdc {
 
@@ -73,7 +74,6 @@ public class ecdc {
             // Χωρίζει το κείμενο σε γραμμές
             String[] line = value.toString().split(",");
             // Λήψη συγκεκριμένων δεδομένων από τη γραμμή
-            String year = line[3];
             int cases = Integer.parseInt(line[4]);
             String country = line[6];
 
@@ -115,10 +115,8 @@ public class ecdc {
 
 
     public static class SecondMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
-        private Text outputFromReducer = new Text();
-        private String cachedData;
-        StringBuilder dataBuilder = new StringBuilder();
-        private HashMap<String, HashMap<String, IntWritable>> secondInputDataMap = new HashMap<>();
+        private HashMap<String, DoubleWritable> dataMap = new HashMap<>();
+        private IntWritable one = new IntWritable(1);
 
         @Override
         protected void setup(Context context) throws IOException, InterruptedException {
@@ -126,43 +124,72 @@ public class ecdc {
             Configuration conf = context.getConfiguration();
             // Λήψη του path του αρχείου από το DistributedCache
             Path[] cacheFiles = DistributedCache.getLocalCacheFiles(conf);
-            if (cacheFiles != null && cacheFiles.length > 0) {
-                // Ανάγνωση του αρχείου και αποθήκευση του περιεχομένου σε ένα StringBuilder
-                try (BufferedReader br = new BufferedReader(new FileReader(cacheFiles[0].toString()))) {
-                    String line;
-                    while ((line = br.readLine()) != null)
-                        // Προσθήκη της γραμμής στο StringBuilder
-                        dataBuilder.append(line).append("\n");
 
-                    // Αποθήκευση του περιεχομένου του αρχείου στη μεταβλητή cachedData
-                    cachedData = dataBuilder.toString();
+            for (Path p : cacheFiles) {
+                // Ανάγνωση του αρχείου
+                BufferedReader reader = new BufferedReader(new FileReader(p.toString()));
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    // Χωρίζει το κείμενο σε γραμμές
+                    String[] data = line.split(" ");
+                    // Αποθήκευση των δεδομένων στον χάρτη
+                    dataMap.put(data[0], new DoubleWritable(Double.parseDouble(data[1])));
                 }
             }
+            /*
+            for (Map.Entry<String, DoubleWritable> entry : dataMap.entrySet()) {
+                System.out.println(entry.getKey() + " " + entry.getValue());
+            }
+             */
+
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 
-            // Ανάγνωση του περιεχομένου του αρχείου που βρίσκεται στη cache
-            String[] data = new String[0];
+            HashMap<String, DoubleWritable> ogData = new HashMap<>();
 
-            if (key.get() == 0)// Παράβλεψη της πρώτης γραμμής
-                // Χωρίζει το περιεχόμενο της cache σε λέξεις
-                data = cachedData.split("\\s+");
+            // Παράβλεψη της πρώτης γραμμής
+            if (key.get() == 0) {
+                return;
+            }
+
+            // Χωρίζει το κείμενο σε γραμμές
+            String[] line = value.toString().split(",");
+            // Λήψη συγκεκριμένων δεδομένων από τη γραμμή
+            int cases = Integer.parseInt(line[4]);
+            String country = line[6];
 
 
-            // Χωρίζει το περιεχόμενο του αρχείου εισόδου σε γραμμές
-            String[] line = value.toString().split("/n//s+");
+            DoubleWritable casesWritable = new DoubleWritable(Double.parseDouble(String.valueOf(cases)));
 
+            ogData.put(country, casesWritable);
 
-            //  Δυστυχώς, δεν κατάφερα να ολοκληρώσω τον δεύτερο mapper και reducer καθώς μου προκύψαν προβλήματα με τον
-            //  χειρισμό του αρχείου που βρίσκεται στη cache.
+/*
+
+            for (Map.Entry<String, DoubleWritable> entry : ogData.entrySet()) {
+                System.out.println(entry.getKey() + " " + entry.getValue());
+
+ */
+
+            // Μεταφορά των δεδομένων στον reducer
+            for (Map.Entry<String, DoubleWritable> entry : dataMap.entrySet()) {
+                for (Map.Entry<String, DoubleWritable> s : ogData.entrySet()) {
+                    if (entry.getKey().equals(s.getKey()) && entry.getValue().get() >s.getValue().get())
+                        context.write(new Text(s.getKey() + " "), one);
+                }
+            }
         }
     }
 
 
 
-    public class SecondReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+    public static class SecondReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+        public SecondReducer() {
+
+        }
+
         public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+
 
         }
     }
