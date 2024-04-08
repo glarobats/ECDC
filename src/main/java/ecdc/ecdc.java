@@ -85,8 +85,7 @@ public class ecdc {
             // Εκπομπή του κλειδιού-τιμής (country, cases)
             context.write(new Text(country + " "), new IntWritable(cases));
         }
-
-}
+    }
 
 
 
