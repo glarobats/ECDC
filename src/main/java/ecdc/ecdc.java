@@ -3,7 +3,6 @@ package ecdc;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.net.URI;
 import java.util.*;
 
@@ -21,14 +20,13 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.hsqldb.Tokenizer;
 
 public class ecdc {
 
 
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        Job job = new Job(conf, "ncdc");
+        Job job = new Job(conf, "ecdc");
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
         job.setMapperClass(FirstMap.class);
@@ -44,7 +42,7 @@ public class ecdc {
         DistributedCache.addCacheFile(new URI("output1/part-r-00000"), conf);
 
         // Ρύθμιση για τον δεύτερο κύκλο MapReduce
-        Job secondJob = new Job(conf, "ncdc-second");
+        Job secondJob = new Job(conf, "ecdc-second");
 
         // Χρήση της έξοδου του πρώτου reducer ως είσοδο για τον δεύτερο mapper
         secondJob.setOutputKeyClass(Text.class);
@@ -136,12 +134,6 @@ public class ecdc {
                     dataMap.put(data[0], new DoubleWritable(Double.parseDouble(data[1])));
                 }
             }
-            /*
-            for (Map.Entry<String, DoubleWritable> entry : dataMap.entrySet()) {
-                System.out.println(entry.getKey() + " " + entry.getValue());
-            }
-             */
-
         }
 
         public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
@@ -159,23 +151,17 @@ public class ecdc {
             int cases = Integer.parseInt(line[4]);
             String country = line[6];
 
-
+            // Δημιουργία του DoubleWritable αντικειμένου και αλλαγή του τύπου του cases
             DoubleWritable casesWritable = new DoubleWritable(Double.parseDouble(String.valueOf(cases)));
 
+            // Αποθήκευση των δεδομένων στον χάρτη
             ogData.put(country, casesWritable);
 
-/*
-
-            for (Map.Entry<String, DoubleWritable> entry : ogData.entrySet()) {
-                System.out.println(entry.getKey() + " " + entry.getValue());
-
- */
-
             // Μεταφορά των δεδομένων στον reducer
-            for (Map.Entry<String, DoubleWritable> entry : dataMap.entrySet()) {
-                for (Map.Entry<String, DoubleWritable> s : ogData.entrySet()) {
-                    if (entry.getKey().equals(s.getKey()) && entry.getValue().get() >s.getValue().get())
-                        context.write(new Text(s.getKey() + " "), one);
+            for (Map.Entry<String, DoubleWritable> d : dataMap.entrySet()) {
+                for (Map.Entry<String, DoubleWritable> o : ogData.entrySet()) {
+                    if (d.getKey().equals(o.getKey()) && o.getValue().get() > d.getValue().get())
+                           context.write(new Text(o.getKey() + " "), one);
                 }
             }
         }
@@ -184,15 +170,17 @@ public class ecdc {
 
 
     public static class SecondReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
-        public SecondReducer() {
-
-        }
-
         public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
 
+            int sum = 0;
 
+            // Υπολογισμός του αθροίσματος των τιμών
+            for (IntWritable value : values) {
+                sum += value.get();
+            }
+
+            // Εκπομπή του κλειδιού-τιμής (country, sum)
+            context.write(key, new IntWritable(sum));
         }
     }
-
-
 }
